@@ -2,6 +2,8 @@
 
 9 prompt-engineering strategies you can swap in and out, plus a harness that runs all of them against the same prompt on a local LLM (Ollama) so you can actually see what each one does differently.
 
+Includes a [walkthrough notebook](notebooks/walkthrough.ipynb) that applies these strategies across five SDLC phases — from problem ideation to solution development — with full model outputs.
+
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Local-first](https://img.shields.io/badge/runs-100%25%20local-success)
@@ -94,16 +96,32 @@ df.to_csv("results/comparison.csv", index=False)
 
 ## Sample output
 
-Prompt: `"Propose a backend code structure for an AI-powered exam studying app for SAT, GRE, and Medical Exams."`, four strategies, TinyLLaMA:
+> Run from `comparison_20260425_164951.csv` — prompt: *"Propose a backend code structure for an AI-powered exam studying app for SAT, GRE, and Medical Exams."*, four strategies, TinyLLaMA 1.1B, `temperature=0.7`, `num_predict=600`.
 
 | Strategy | Latency (ms) | Tokens | What happened |
 |---|---:|---:|---|
-| `few_shot` | 22,436 | 326 | Produced a concrete folder tree that followed the example format |
-| `chain_of_thought` | 8,000 | 597 | Went deep on stakeholder analysis but drifted away from code structure |
-| `cot_with_reflection` | 3,586 | 249 | Just echoed the prompt back instead of answering |
-| `self_consistency` | 8,243 | 600 | Spent all its tokens on the scoring rubric, never got to the actual design |
+| `few_shot` | 22,436 | 326 | Produced a concrete folder tree with per-file purpose annotations, closest to a usable answer |
+| `chain_of_thought` | 8,000 | 597 | Generated detailed stakeholder analysis but drifted away from actual code structure |
+| `cot_with_reflection` | 3,586 | 249 | Echoed the system prompt back verbatim — model lacked capacity for multi-step meta-instructions |
+| `self_consistency` | 8,243 | 600 | Burned the entire token budget printing its internal scoring rubric instead of a final design |
 
-The demo notebook has the full outputs.
+The demo notebook has the full outputs and a pandas DataFrame you can explore interactively.
+
+## Walkthrough notebook
+
+The [`walkthrough.ipynb`](notebooks/walkthrough.ipynb) notebook goes beyond the side-by-side comparison and applies prompt strategies across five SDLC phases, each with a dedicated experiment:
+
+| # | Experiment | SDLC Phase | Techniques Used | Key Observation |
+|---|---|---|---|---|
+| 1 | Problem Ideation | Discovery | Chain-of-Thought | Produced 4 structured problem statements with pain points, assumptions, and clarifying questions (645 tokens) |
+| 2 | Solution Ideation | Discovery | Chain-of-Thought | Generated 2 solution concepts with features, risks, and metrics — but hallucinated exam acronyms (405 tokens) |
+| 3 | Requirement Analysis | Requirements | Template (User Stories) | Output followed the Given/When/Then acceptance criteria format as instructed |
+| 4 | System Design | Design | Few-Shot, CoT+Reflection, Self-Consistency | Few-Shot produced a concrete folder tree; CoT+Reflection echoed instructions; Self-Consistency printed its rubric |
+| 5 | Solution Development | Implementation | Few-Shot, CoT+Reflection, Self-Consistency (×5 candidates) | Few-Shot again produced the most usable output; a `run_self_consistent()` helper scored candidates by section-header coverage |
+
+The walkthrough also includes a reusable `model_request()` function with configurable parameters (`temperature`, `top_k`, `top_p`, `num_predict`, `context_window`) and documents the parameter tuning choices for each experiment.
+
+> **Consistent finding across all 5 experiments:** Few-Shot prompting was the most reliable strategy for structured output on TinyLLaMA. Strategies that require multi-step meta-reasoning (CoT+Reflection, Self-Consistency) consistently failed — the 1.1B-parameter model doesn't have enough capacity to follow complex instructions *and* produce a real answer.
 
 ## Strategies
 
@@ -134,7 +152,9 @@ The demo notebook has the full outputs.
 
 Running all of these on TinyLLaMA (1.1B params) instead of a bigger model turned out to be the interesting part. The small model makes the gaps between strategies obvious in ways that GPT-4 class models would just paper over.
 
-Few-Shot was the clear winner for structured output. Giving the model concrete examples to mimic kept it on track. Chain-of-Thought generated a lot of text but wandered off-topic. Self-Consistency tripled the latency for marginal quality gains. And CoT+Reflection, which should have been the best of both worlds, just echoed the instructions back verbatim. The model didn't have enough capacity to follow multi-step meta-instructions while also producing a real answer.
+**Few-Shot was the clear winner for structured output** — across all five SDLC experiments in the walkthrough, not just the side-by-side comparison. Giving the model concrete examples to mimic kept it on track every time. Chain-of-Thought generated a lot of text but wandered off-topic. Self-Consistency tripled the latency for marginal quality gains (even with the `run_self_consistent()` N-candidate approach in the walkthrough). And CoT+Reflection, which should have been the best of both worlds, just echoed the instructions back verbatim. The model didn't have enough capacity to follow multi-step meta-instructions while also producing a real answer.
+
+Parameter tuning also mattered more than expected. Lowering `temperature` to 0.35 with `top_k=30` improved format fidelity for Few-Shot, while CoT benefited from a slightly higher `top_p=0.95` to allow longer reasoning chains.
 
 ## Project layout
 
@@ -148,7 +168,8 @@ prompt-strategy-lab/
 ├── tests/
 │   └── test_strategies.py # deterministic tests, no LLM calls
 ├── notebooks/
-│   └── demo.ipynb         # end-to-end example with pandas
+│   ├── demo.ipynb         # end-to-end example with pandas
+│   └── walkthrough.ipynb  # 5 SDLC-phase experiments with full outputs
 ├── results/               # saved CSV outputs from runs
 └── pyproject.toml
 ```
