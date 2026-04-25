@@ -152,8 +152,3 @@ prompt-strategy-lab/
 ├── results/               # saved CSV outputs from runs
 └── pyproject.toml
 ```
-
----
-
-**Part of my GenAI portfolio:**
-[prompt-strategy-lab](.) · [rag-ablation-lab](../rag-ablation-lab) · [clinical-ai-tool-agent](../clinical-ai-tool-agent) · [mcp-research-collective](../mcp-research-collective)
